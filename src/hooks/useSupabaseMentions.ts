@@ -31,6 +31,7 @@ export function useSupabaseMentions({
 
   const fetchMentions = async (offsetValue: number) => {
     try {
+      console.log('Fetching mentions with offset:', offsetValue, 'limit:', limit);
       setLoading(true);
       
       let query = supabase
@@ -40,6 +41,7 @@ export function useSupabaseMentions({
         .range(offsetValue, offsetValue + limit - 1);
       
       if (filter) {
+        console.log('Applying filter:', filter.type, filter.value);
         if (filter.type === 'asset') {
           query = query.ilike('Asset', `%${filter.value}%`);
         } else if (filter.type === 'channel') {
@@ -49,10 +51,15 @@ export function useSupabaseMentions({
       
       const { data, error: supabaseError } = await query;
       
-      if (supabaseError) throw new Error(supabaseError.message);
+      if (supabaseError) {
+        console.error('Supabase error:', supabaseError);
+        throw new Error(supabaseError.message);
+      }
+      
+      console.log('Fetched data count:', data?.length || 0);
       
       // Transform the data to match the Mention type
-      const transformedData: Mention[] = data.map(item => ({
+      const transformedData: Mention[] = data ? data.map(item => ({
         id: item.id.toString(),
         created_at: item.created_at,
         youtube_channel: item.youtube_channel || '',
@@ -64,7 +71,7 @@ export function useSupabaseMentions({
         Video_Name: item.Video_Name || '',
         URL: item.URL || '',
         VideoID: item.VideoID || ''
-      }));
+      })) : [];
       
       if (offsetValue === 0) {
         setMentions(transformedData);
@@ -72,7 +79,7 @@ export function useSupabaseMentions({
         setMentions(prev => [...prev, ...transformedData]);
       }
       
-      setHasMore(data.length === limit);
+      setHasMore(data && data.length === limit);
       setError(null);
     } catch (err) {
       console.error('Error fetching mentions:', err);

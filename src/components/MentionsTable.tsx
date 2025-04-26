@@ -85,7 +85,7 @@ const MentionsTable: React.FC<MentionsTableProps> = ({
         </div>
       )}
       
-      <div className="table-container">
+      <div className="table-container overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -124,7 +124,8 @@ const MentionsTable: React.FC<MentionsTableProps> = ({
                           target="_blank" 
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="text-primary hover:text-primary/80 transition-colors"
+                          className="text-primary hover:text-primary/80 transition-colors bg-primary/10 p-2 rounded-full flex items-center justify-center hover:bg-primary/20"
+                          title="Watch on YouTube"
                         >
                           <Youtube className="h-5 w-5" />
                         </a>
@@ -189,7 +190,7 @@ const MentionsTable: React.FC<MentionsTableProps> = ({
         <div className="flex justify-center mt-4">
           <Button 
             onClick={onLoadMore} 
-            variant="outline" 
+            variant="default" 
             className="w-full max-w-xs"
             disabled={loading}
           >
