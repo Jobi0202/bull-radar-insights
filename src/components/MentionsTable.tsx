@@ -112,11 +112,16 @@ const MentionsTable: React.FC<MentionsTableProps> = ({
                     )}
                     {isExpandable && (
                       <TableCell className="text-right">
-                        <CollapsibleTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="sm">
-                            {expandedId === mention.id ? "Hide" : "Details"}
-                          </Button>
-                        </CollapsibleTrigger>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleExpand(mention.id);
+                          }}
+                        >
+                          {expandedId === mention.id ? "Hide" : "Details"}
+                        </Button>
                       </TableCell>
                     )}
                   </TableRow>
