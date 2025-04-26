@@ -49,7 +49,7 @@ export function useSupabaseMentions({
       
       const { data, error: supabaseError } = await query;
       
-      if (supabaseError) throw new supabaseError;
+      if (supabaseError) throw new Error(supabaseError.message);
       
       // Transform the data to match the Mention type
       const transformedData: Mention[] = data.map(item => ({
