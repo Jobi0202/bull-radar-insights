@@ -9,12 +9,14 @@ import HomePage from "./pages/HomePage";
 import SearchResultsPage from "./pages/SearchResultsPage";
 import NotFound from "./pages/NotFound";
 
-// Create a client
+// Create a client with improved configuration
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60 * 1000, // 1 minute
-      retry: 2,
+      staleTime: 0, // Always fetch fresh data
+      retry: 3, // Increase retry attempts
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+      refetchOnWindowFocus: true, // Refresh when window gains focus
     },
   },
 });
