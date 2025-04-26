@@ -1,88 +1,124 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Logo from '@/components/Logo';
-import SearchBar from '@/components/SearchBar';
 import MentionsTable from '@/components/MentionsTable';
 import { Button } from '@/components/ui/button';
-import { Mention } from '@/types';
-import { 
-  getMentionsByAsset, 
-  getMentionsByChannel,
-  getUniqueAssets, 
-  getUniqueChannels
-} from '@/data/mockData';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import Autocomplete from '@/components/Autocomplete';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useSupabaseMentions } from '@/hooks/useSupabaseMentions';
+import { supabase } from '@/integrations/supabase/client';
 
 const SearchResultsPage: React.FC = () => {
   const { query } = useParams<{ query: string }>();
   const navigate = useNavigate();
-  const [mentions, setMentions] = useState<Mention[]>([]);
+  const [searchType, setSearchType] = useState<'channel' | 'asset' | null>(null);
   const [filterOptions, setFilterOptions] = useState<string[]>([]);
   const [currentFilter, setCurrentFilter] = useState('all');
-  const [searchType, setSearchType] = useState<'channel' | 'asset' | null>(null);
   
+  const { mentions, loading, error, fetchMore, hasMore } = useSupabaseMentions({
+    limit: 100,
+    filter: searchType && query ? {
+      type: searchType,
+      value: query
+    } : undefined
+  });
+  
+  // Determine if query is a channel or an asset
   useEffect(() => {
+    const determineSearchType = async () => {
+      if (!query) return;
+      
+      try {
+        // Check for channel matches
+        const { data: channelData } = await supabase
+          .from('Youtube Sentiment')
+          .select('youtube_channel')
+          .ilike('youtube_channel', `%${query}%`)
+          .limit(1);
+          
+        // Check for asset matches
+        const { data: assetData } = await supabase
+          .from('Youtube Sentiment')
+          .select('Asset')
+          .ilike('Asset', `%${query}%`)
+          .limit(1);
+        
+        // Count exact matches
+        const exactChannelMatch = channelData?.some(
+          item => item.youtube_channel?.toLowerCase() === query.toLowerCase()
+        );
+        
+        const exactAssetMatch = assetData?.some(
+          item => item.Asset?.toLowerCase() === query.toLowerCase()
+        );
+        
+        // Set search type based on matches
+        if (exactChannelMatch || (!exactAssetMatch && channelData && channelData.length > 0)) {
+          setSearchType('channel');
+          // Load filter options (assets)
+          loadFilterOptions('Asset');
+        } else {
+          setSearchType('asset');
+          // Load filter options (channels)
+          loadFilterOptions('youtube_channel');
+        }
+      } catch (error) {
+        console.error('Error determining search type:', error);
+      }
+    };
+
+    determineSearchType();
+  }, [query]);
+  
+  const loadFilterOptions = async (column: string) => {
     if (!query) return;
     
-    // Try to determine if this is a channel or asset search
-    const matchingChannels = getUniqueChannels().filter(
-      channel => channel.toLowerCase().includes(query.toLowerCase())
-    );
-    
-    const matchingAssets = getUniqueAssets().filter(
-      asset => asset.toLowerCase().includes(query.toLowerCase())
-    );
-    
-    // If exact match with an asset, treat as asset search
-    if (matchingAssets.includes(query)) {
-      const assetMentions = getMentionsByAsset(query);
-      setMentions(assetMentions);
-      setFilterOptions(getUniqueChannels());
-      setSearchType('asset');
-    } 
-    // If exact match with a channel, treat as channel search
-    else if (matchingChannels.includes(query)) {
-      const channelMentions = getMentionsByChannel(query);
-      setMentions(channelMentions);
-      setFilterOptions(getUniqueAssets());
-      setSearchType('channel');
+    try {
+      const filterColumn = column;
+      const whereColumn = column === 'Asset' ? 'youtube_channel' : 'Asset';
+      const whereValue = query;
+      
+      const { data } = await supabase
+        .from('Youtube Sentiment')
+        .select(filterColumn)
+        .ilike(whereColumn, `%${whereValue}%`)
+        .order(filterColumn);
+      
+      if (data) {
+        // Extract unique values
+        const options = Array.from(
+          new Set(
+            data
+              .map(item => item[filterColumn as keyof typeof item] as string)
+              .filter(Boolean)
+          )
+        );
+        
+        setFilterOptions(options);
+      }
+    } catch (error) {
+      console.error('Error loading filter options:', error);
     }
-    // More matches for assets than channels, treat as asset search
-    else if (matchingAssets.length > matchingChannels.length) {
-      const assetMentions = getMentionsByAsset(query);
-      setMentions(assetMentions);
-      setFilterOptions(getUniqueChannels());
-      setSearchType('asset');
-    } 
-    // Default to channel search
-    else {
-      const channelMentions = getMentionsByChannel(query);
-      setMentions(channelMentions);
-      setFilterOptions(getUniqueAssets());
-      setSearchType('channel');
-    }
-  }, [query]);
+  };
   
   const handleFilterChange = (value: string) => {
     setCurrentFilter(value);
     
     if (value === 'all') {
       // Reset to unfiltered results
-      if (searchType === 'asset' && query) {
-        setMentions(getMentionsByAsset(query));
-      } else if (searchType === 'channel' && query) {
-        setMentions(getMentionsByChannel(query));
-      }
+      navigate(`/search/${encodeURIComponent(query || '')}`);
       return;
     }
     
-    // Apply the filter
-    if (searchType === 'asset' && query) {
+    // Navigate to the appropriate filtered search
+    if (searchType === 'asset') {
       // Filter by channel
-      setMentions(getMentionsByAsset(query).filter(m => m.youtube_channel === value));
-    } else if (searchType === 'channel' && query) {
+      navigate(`/search/${encodeURIComponent(query || '')}?channel=${encodeURIComponent(value)}`);
+    } else {
       // Filter by asset
-      setMentions(getMentionsByChannel(query).filter(m => m.Asset === value));
+      navigate(`/search/${encodeURIComponent(query || '')}?asset=${encodeURIComponent(value)}`);
     }
   };
   
@@ -99,26 +135,45 @@ const SearchResultsPage: React.FC = () => {
           </Button>
           <Logo />
         </div>
-        <SearchBar onSearch={handleSearch} />
+        <div className="flex items-center gap-4">
+          <Autocomplete 
+            onSearch={handleSearch} 
+            type={searchType === 'asset' ? 'channel' : 'asset'}
+            placeholder="Search assets or channels..."
+          />
+          <ThemeToggle />
+        </div>
       </header>
       
       <main>
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">
-            {searchType === 'asset' 
-              ? `Mentions for Asset: "${query}"` 
-              : `${query}`}
-          </h2>
-          
-          <MentionsTable 
-            mentions={mentions} 
-            filterOptions={filterOptions}
-            filterLabel={searchType === 'asset' ? "Filter by Channel" : "Filter by Asset"}
-            onFilterChange={handleFilterChange}
-            expandedView={searchType}
-            isExpandable={true}
-          />
-        </div>
+        <Card className="overflow-hidden border-none shadow-lg">
+          <CardHeader className="bg-primary/5 dark:bg-primary/10">
+            <CardTitle className="text-xl font-semibold">
+              {searchType === 'asset' 
+                ? `Mentions for Asset: "${query}"` 
+                : `${query}`}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <MentionsTable 
+              mentions={mentions} 
+              filterOptions={filterOptions}
+              filterLabel={searchType === 'asset' ? "Filter by Channel" : "Filter by Asset"}
+              onFilterChange={handleFilterChange}
+              expandedView={searchType}
+              isExpandable={true}
+              loading={loading}
+              hasMore={hasMore}
+              onLoadMore={fetchMore}
+            />
+          </CardContent>
+        </Card>
+
+        {error && (
+          <div className="p-4 bg-destructive/10 text-destructive rounded-md mt-4">
+            Error loading data: {error.message}
+          </div>
+        )}
       </main>
     </div>
   );

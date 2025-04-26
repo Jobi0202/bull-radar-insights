@@ -22,6 +22,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Youtube } from "lucide-react";
 import SentimentBadge from './SentimentBadge';
 import { Mention } from '@/types';
 
@@ -32,6 +33,9 @@ interface MentionsTableProps {
   filterLabel?: string;
   onFilterChange?: (value: string) => void;
   expandedView?: 'channel' | 'asset';
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  loading?: boolean;
 }
 
 const MentionsTable: React.FC<MentionsTableProps> = ({ 
@@ -40,7 +44,10 @@ const MentionsTable: React.FC<MentionsTableProps> = ({
   filterOptions = [],
   filterLabel = "Filter",
   onFilterChange,
-  expandedView 
+  expandedView,
+  onLoadMore,
+  hasMore = false,
+  loading = false
 }) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -51,6 +58,11 @@ const MentionsTable: React.FC<MentionsTableProps> = ({
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
+  };
+
+  const truncateText = (text: string, maxLength: number) => {
+    if (!text) return '';
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
   };
 
   return (
@@ -81,7 +93,7 @@ const MentionsTable: React.FC<MentionsTableProps> = ({
               {expandedView !== 'asset' && <TableHead>Asset</TableHead>}
               <TableHead>Date</TableHead>
               <TableHead>Sentiment</TableHead>
-              {(isExpandable || expandedView) && <TableHead>Score</TableHead>}
+              <TableHead className="w-full">Video</TableHead>
               {isExpandable && <TableHead className="w-10"></TableHead>}
             </TableRow>
           </TableHeader>
@@ -89,7 +101,7 @@ const MentionsTable: React.FC<MentionsTableProps> = ({
             {mentions.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center">
-                  No results found.
+                  {loading ? 'Loading...' : 'No results found.'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -105,23 +117,36 @@ const MentionsTable: React.FC<MentionsTableProps> = ({
                     <TableCell>
                       <SentimentBadge sentiment={mention.Sentiment} />
                     </TableCell>
-                    {(isExpandable || expandedView) && (
-                      <TableCell className="font-mono">
-                        {mention.Score.toFixed(2)}
-                      </TableCell>
-                    )}
+                    <TableCell className="max-w-xs lg:max-w-md xl:max-w-lg flex items-center gap-2">
+                      {mention.URL && (
+                        <a 
+                          href={mention.URL} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-primary hover:text-primary/80 transition-colors"
+                        >
+                          <Youtube className="h-5 w-5" />
+                        </a>
+                      )}
+                      <span className="truncate">{truncateText(mention.Video_Name, 60)}</span>
+                    </TableCell>
                     {isExpandable && (
                       <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleExpand(mention.id);
-                          }}
-                        >
-                          {expandedId === mention.id ? "Hide" : "Details"}
-                        </Button>
+                        <Collapsible open={expandedId === mention.id}>
+                          <CollapsibleTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExpand(mention.id);
+                              }}
+                            >
+                              {expandedId === mention.id ? "Hide" : "Details"}
+                            </Button>
+                          </CollapsibleTrigger>
+                        </Collapsible>
                       </TableCell>
                     )}
                   </TableRow>
@@ -137,13 +162,14 @@ const MentionsTable: React.FC<MentionsTableProps> = ({
                               </div>
                               <div>
                                 <h4 className="font-semibold">Video</h4>
+                                <p className="text-sm">{mention.Video_Name}</p>
                                 <a 
                                   href={mention.URL} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
-                                  className="text-sm text-blue-600 hover:underline"
+                                  className="text-sm text-primary hover:underline flex items-center gap-1 mt-1"
                                 >
-                                  {mention.Video_Name}
+                                  <Youtube className="h-4 w-4" /> Watch on YouTube
                                 </a>
                               </div>
                             </div>
@@ -158,6 +184,19 @@ const MentionsTable: React.FC<MentionsTableProps> = ({
           </TableBody>
         </Table>
       </div>
+      
+      {hasMore && (
+        <div className="flex justify-center mt-4">
+          <Button 
+            onClick={onLoadMore} 
+            variant="outline" 
+            className="w-full max-w-xs"
+            disabled={loading}
+          >
+            {loading ? 'Loading...' : 'Load More Results'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
