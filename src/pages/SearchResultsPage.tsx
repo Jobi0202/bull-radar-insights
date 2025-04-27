@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useSupabaseMentions } from '@/hooks/useSupabaseMentions';
 import { supabase } from '@/integrations/supabase/client';
 import { RefreshCw } from 'lucide-react';
+import ChannelAssetDetails from '@/components/ChannelAssetDetails';
 
 const SearchResultsPage: React.FC = () => {
   const { query } = useParams<{ query: string }>();
@@ -161,14 +162,10 @@ const SearchResultsPage: React.FC = () => {
     }
   };
   
-  const handleSearch = (newQuery: string) => {
+  const handleSearch = (newQuery: string, type: 'channel' | 'asset') => {
     navigate(`/search/${encodeURIComponent(newQuery)}`);
   };
-  
-  const handleRefresh = async () => {
-    await refresh();
-  };
-  
+
   return (
     <div className="container mx-auto py-8 px-4 animate-fade-in">
       <header className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
@@ -189,6 +186,17 @@ const SearchResultsPage: React.FC = () => {
       </header>
       
       <main>
+        {query && searchType && (
+          <Card className="mb-6 overflow-hidden">
+            <CardContent className="p-6">
+              <ChannelAssetDetails 
+                type={searchType} 
+                name={query}
+              />
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="overflow-hidden border-none shadow-lg">
           <CardHeader className="bg-primary/5 dark:bg-primary/10 flex flex-row items-center justify-between">
             <CardTitle className="text-xl font-semibold">
@@ -201,7 +209,7 @@ const SearchResultsPage: React.FC = () => {
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={handleRefresh} 
+              onClick={refresh} 
               disabled={loading || determining}
               className="flex items-center gap-2"
             >
@@ -246,7 +254,7 @@ const SearchResultsPage: React.FC = () => {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={handleRefresh}
+                  onClick={refresh}
                   className="self-start"
                 >
                   Try Again
