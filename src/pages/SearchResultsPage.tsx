@@ -1,17 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import Logo from '@/components/Logo';
-import MentionsTable from '@/components/MentionsTable';
-import { Button } from '@/components/ui/button';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import Autocomplete from '@/components/Autocomplete';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useSupabaseMentions } from '@/hooks/useSupabaseMentions';
 import { supabase } from '@/integrations/supabase/client';
-import { RefreshCw } from 'lucide-react';
-import ChannelAssetDetails from '@/components/ChannelAssetDetails';
+import SearchHeader from '@/components/search/SearchHeader';
+import SearchResults from '@/components/search/SearchResults';
 
 const SearchResultsPage: React.FC = () => {
   const { query } = useParams<{ query: string }>();
@@ -29,7 +22,6 @@ const SearchResultsPage: React.FC = () => {
     } : undefined
   });
   
-  // Determine if query is a channel or an asset
   useEffect(() => {
     const determineSearchType = async () => {
       if (!query) return;
@@ -38,7 +30,6 @@ const SearchResultsPage: React.FC = () => {
         setDetermining(true);
         console.log('[SearchPage] Determining search type for query:', query);
         
-        // Check for channel matches
         const { data: channelData, error: channelError } = await supabase
           .from('Youtube Sentiment')
           .select('youtube_channel')
@@ -50,7 +41,6 @@ const SearchResultsPage: React.FC = () => {
           throw channelError;
         }
 
-        // Check for asset matches
         const { data: assetData, error: assetError } = await supabase
           .from('Youtube Sentiment')
           .select('Asset')
@@ -67,7 +57,6 @@ const SearchResultsPage: React.FC = () => {
           assetMatches: assetData?.length || 0
         });
         
-        // Count exact matches
         const exactChannelMatch = channelData?.some(
           item => item.youtube_channel?.toLowerCase() === query.toLowerCase()
         );
@@ -81,16 +70,13 @@ const SearchResultsPage: React.FC = () => {
           assetExact: exactAssetMatch
         });
         
-        // Set search type based on matches
         if (exactChannelMatch || (!exactAssetMatch && channelData && channelData.length > 0)) {
           console.log('[SearchPage] Determined as channel search');
           setSearchType('channel');
-          // Load filter options (assets)
           loadFilterOptions('Asset');
         } else {
           console.log('[SearchPage] Determined as asset search');
           setSearchType('asset');
-          // Load filter options (channels)
           loadFilterOptions('youtube_channel');
         }
       } catch (error) {
@@ -125,7 +111,6 @@ const SearchResultsPage: React.FC = () => {
       }
       
       if (data) {
-        // Extract unique values
         const options = Array.from(
           new Set(
             data
@@ -147,17 +132,13 @@ const SearchResultsPage: React.FC = () => {
     setCurrentFilter(value);
     
     if (value === 'all') {
-      // Reset to unfiltered results
       navigate(`/search/${encodeURIComponent(query || '')}`);
       return;
     }
     
-    // Navigate to the appropriate filtered search
     if (searchType === 'asset') {
-      // Filter by channel
       navigate(`/search/${encodeURIComponent(query || '')}?channel=${encodeURIComponent(value)}`);
     } else {
-      // Filter by asset
       navigate(`/search/${encodeURIComponent(query || '')}?asset=${encodeURIComponent(value)}`);
     }
   };
@@ -168,102 +149,41 @@ const SearchResultsPage: React.FC = () => {
 
   return (
     <div className="container mx-auto py-8 px-4 animate-fade-in">
-      <header className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" onClick={() => navigate('/')}>
-            ← Back
-          </Button>
-          <Logo />
-        </div>
-        <div className="flex items-center gap-4">
-          <Autocomplete 
-            onSearch={handleSearch} 
-            type={searchType === 'asset' ? 'channel' : 'asset'}
-            placeholder="Search assets or channels..."
-          />
-          <ThemeToggle />
-        </div>
-      </header>
+      <SearchHeader onSearch={handleSearch} />
       
-      <main>
-        {query && searchType && (
-          <Card className="mb-6 overflow-hidden">
-            <CardContent className="p-6">
-              <ChannelAssetDetails 
-                type={searchType} 
-                name={query}
-              />
-            </CardContent>
-          </Card>
-        )}
+      <SearchResults
+        query={query}
+        searchType={searchType}
+        mentions={mentions}
+        loading={loading}
+        determining={determining}
+        error={error}
+        hasMore={hasMore}
+        filterOptions={filterOptions}
+        currentFilter={currentFilter}
+        onFilterChange={handleFilterChange}
+        onLoadMore={fetchMore}
+        onRefresh={refresh}
+        onChannelClick={handleSearch}
+      />
 
-        <Card className="overflow-hidden border-none shadow-lg">
-          <CardHeader className="bg-primary/5 dark:bg-primary/10 flex flex-row items-center justify-between">
-            <CardTitle className="text-xl font-semibold">
-              {determining ? 'Searching...' : (
-                searchType === 'asset' 
-                  ? `Mentions for Asset: "${query}"` 
-                  : `${query}`
-              )}
-            </CardTitle>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={refresh} 
-              disabled={loading || determining}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${(loading || determining) ? 'animate-spin' : ''}`} />
-              {(loading || determining) ? 'Loading...' : 'Refresh'}
-            </Button>
-          </CardHeader>
-          <CardContent className="p-0">
-            <MentionsTable 
-              mentions={mentions} 
-              filterOptions={filterOptions}
-              filterLabel={searchType === 'asset' ? "Filter by Channel" : "Filter by Asset"}
-              onFilterChange={handleFilterChange}
-              expandedView={searchType}
-              isExpandable={true}
-              loading={loading || determining}
-              hasMore={hasMore}
-              onLoadMore={fetchMore}
-            />
-            
-            {mentions.length === 0 && !loading && !determining && !error && (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No results found for "{query}". Try a different search term.</p>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => navigate('/')} 
-                  className="mt-4"
-                >
-                  Return to Homepage
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {error && (
-          <Alert variant="destructive" className="mt-4">
-            <AlertDescription>
-              <div className="flex flex-col gap-2">
-                <p>Error loading data: {error.message}</p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={refresh}
-                  className="self-start"
-                >
-                  Try Again
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-      </main>
+      {error && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertDescription>
+            <div className="flex flex-col gap-2">
+              <p>Error loading data: {error.message}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={refresh}
+                className="self-start"
+              >
+                Try Again
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
     </div>
   );
 };
