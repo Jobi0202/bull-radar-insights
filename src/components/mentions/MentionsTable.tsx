@@ -1,11 +1,11 @@
-
 import { useState } from 'react';
 import { 
   Table, 
   TableBody, 
   TableHead, 
   TableHeader, 
-  TableRow 
+  TableRow,
+  TableCell  // Added this import
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import {
