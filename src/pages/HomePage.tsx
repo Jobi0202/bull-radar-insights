@@ -1,6 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Calendar } from 'lucide-react';
+import { DateRange } from 'react-day-picker';
+import { addDays, format } from 'date-fns';
+
 import Logo from '@/components/Logo';
 import MentionsTable from '@/components/MentionsTable';
 import Autocomplete from '@/components/Autocomplete';
@@ -9,31 +13,75 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useSupabaseMentions } from '@/hooks/useSupabaseMentions';
-import { RefreshCw } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
+  const [date, setDate] = React.useState<DateRange | undefined>({
+    from: addDays(new Date(), -30),
+    to: new Date(),
+  });
+  
   const { mentions, loading, error, fetchMore, hasMore, refresh } = useSupabaseMentions({
-    limit: 100
+    limit: 100,
+    dateRange: date
   });
 
-  const handleSearch = (query: string) => {
-    navigate(`/search/${encodeURIComponent(query)}`);
+  const handleSearch = (query: string, type: 'asset' | 'channel') => {
+    navigate(`/search/${encodeURIComponent(query)}?type=${type}`);
   };
 
-  const handleRefresh = async () => {
-    await refresh();
+  const handleChannelClick = (channel: string) => {
+    navigate(`/search/${encodeURIComponent(channel)}?type=channel`);
   };
 
   return (
-    <div className="container mx-auto py-8 px-4 animate-fade-in">
+    <div className="container mx-auto py-8 px-4 animate-fade-in font-sans">
       <header className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
         <div className="flex items-center">
           <Logo />
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap justify-end">
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "justify-start text-left font-normal w-[240px]",
+                    !date && "text-muted-foreground"
+                  )}
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {date?.from ? (
+                    date.to ? (
+                      <>
+                        {format(date.from, "LLL dd")} - {format(date.to, "LLL dd")}
+                      </>
+                    ) : (
+                      format(date.from, "LLL dd")
+                    )
+                  ) : (
+                    <span>Pick a date range</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <CalendarComponent
+                  initialFocus
+                  mode="range"
+                  defaultMonth={date?.from}
+                  selected={date}
+                  onSelect={setDate}
+                  numberOfMonths={2}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
           <Autocomplete 
-            onSearch={handleSearch} 
+            onSearch={handleSearch}
             type="asset"
             placeholder="Search assets or channels..."
           />
@@ -43,18 +91,8 @@ const HomePage: React.FC = () => {
 
       <main>
         <Card className="mb-6 overflow-hidden border-none shadow-lg">
-          <CardHeader className="bg-primary/5 dark:bg-primary/10 flex flex-row items-center justify-between">
-            <CardTitle className="text-xl font-semibold">Recent Mentions</CardTitle>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={handleRefresh} 
-              disabled={loading}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              {loading ? 'Loading...' : 'Refresh'}
-            </Button>
+          <CardHeader className="bg-primary/5 dark:bg-primary/10">
+            <CardTitle className="text-xl font-semibold">Radar</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <MentionsTable 
@@ -62,7 +100,8 @@ const HomePage: React.FC = () => {
               isExpandable={true}
               loading={loading}
               hasMore={hasMore}
-              onLoadMore={fetchMore} 
+              onLoadMore={fetchMore}
+              onChannelClick={handleChannelClick}
             />
             
             {mentions.length === 0 && !loading && !error && (
@@ -71,7 +110,7 @@ const HomePage: React.FC = () => {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={handleRefresh} 
+                  onClick={refresh} 
                   className="mt-4"
                 >
                   Refresh Data
@@ -89,7 +128,7 @@ const HomePage: React.FC = () => {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={handleRefresh}
+                  onClick={refresh}
                   className="self-start"
                 >
                   Try Again
