@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { 
   Table, 
   TableBody, 
-  TableHead, 
+  TableHead,        // ← ensure this is imported
   TableHeader, 
   TableRow,
-  TableCell  // Added this import
+  TableCell         // ← ensure this is imported
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import {
@@ -96,9 +96,8 @@ const MentionsTable = ({
               </TableRow>
             ) : (
               mentions.map((mention) => (
-                <>
+                <React.Fragment key={mention.id}>
                   <MentionRow
-                    key={`row-${mention.id}`}
                     mention={mention}
                     expandedView={expandedView}
                     onChannelClick={onChannelClick}
@@ -108,12 +107,11 @@ const MentionsTable = ({
                   />
                   {expandedId === mention.id && (
                     <MentionDetails
-                      key={`details-${mention.id}`}
                       mention={mention}
                       expandedView={expandedView}
                     />
                   )}
-                </>
+                </React.Fragment>
               ))
             )}
           </TableBody>

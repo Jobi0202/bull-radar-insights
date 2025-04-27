@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar } from 'lucide-react';
@@ -6,7 +5,7 @@ import { DateRange } from 'react-day-picker';
 import { addDays, format } from 'date-fns';
 
 import Logo from '@/components/Logo';
-import MentionsTable from '@/components/MentionsTable';
+import MentionsTable from '@/components/mentions/MentionsTable';   // ← fixed path
 import Autocomplete from '@/components/Autocomplete';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +22,6 @@ const HomePage: React.FC = () => {
     from: addDays(new Date(), -30),
     to: new Date(),
   });
-  
   const { mentions, loading, error, fetchMore, hasMore, refresh } = useSupabaseMentions({
     limit: 100,
     dateRange: date
@@ -32,7 +30,6 @@ const HomePage: React.FC = () => {
   const handleSearch = (query: string, type: 'asset' | 'channel') => {
     navigate(`/search/${encodeURIComponent(query)}?type=${type}`);
   };
-
   const handleChannelClick = (channel: string) => {
     navigate(`/search/${encodeURIComponent(channel)}?type=channel`);
   };
@@ -40,9 +37,7 @@ const HomePage: React.FC = () => {
   return (
     <div className="container mx-auto py-8 px-4 animate-fade-in font-sans">
       <header className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
-        <div className="flex items-center">
-          <Logo />
-        </div>
+        <div className="flex items-center"><Logo /></div>
         <div className="flex items-center gap-4 flex-wrap justify-end">
           <div className="flex items-center gap-2">
             <Popover>
@@ -80,6 +75,7 @@ const HomePage: React.FC = () => {
               </PopoverContent>
             </Popover>
           </div>
+
           <Autocomplete 
             onSearch={handleSearch}
             type="asset"
@@ -103,7 +99,6 @@ const HomePage: React.FC = () => {
               onLoadMore={fetchMore}
               onChannelClick={handleChannelClick}
             />
-            
             {mentions.length === 0 && !loading && !error && (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">No mentions found. Try refreshing the data.</p>
@@ -119,15 +114,15 @@ const HomePage: React.FC = () => {
             )}
           </CardContent>
         </Card>
-        
+
         {error && (
           <Alert variant="destructive" className="mt-4">
             <AlertDescription>
               <div className="flex flex-col gap-2">
                 <p>Error loading data: {error.message}</p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={refresh}
                   className="self-start"
                 >

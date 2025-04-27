@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";                        // ← added
 import { useSupabaseMentions } from '@/hooks/useSupabaseMentions';
 import { supabase } from '@/integrations/supabase/client';
+
 import SearchHeader from '@/components/search/SearchHeader';
 import SearchResults from '@/components/search/SearchResults';
 
@@ -13,69 +16,45 @@ const SearchResultsPage: React.FC = () => {
   const [filterOptions, setFilterOptions] = useState<string[]>([]);
   const [currentFilter, setCurrentFilter] = useState('all');
   const [determining, setDetermining] = useState(true);
-  
-  const { mentions, loading, error, fetchMore, hasMore, refresh } = useSupabaseMentions({
-    limit: 100,
-    filter: searchType && query ? {
-      type: searchType,
-      value: query
-    } : undefined
-  });
-  
+
+  const { mentions, loading, error, fetchMore, hasMore, refresh } =
+    useSupabaseMentions({
+      limit: 100,
+      filter: searchType && query
+        ? { type: searchType, value: query }
+        : undefined
+    });
+
   useEffect(() => {
     const determineSearchType = async () => {
       if (!query) return;
-      
       try {
         setDetermining(true);
-        console.log('[SearchPage] Determining search type for query:', query);
-        
         const { data: channelData, error: channelError } = await supabase
           .from('Youtube Sentiment')
           .select('youtube_channel')
           .ilike('youtube_channel', `%${query}%`)
           .limit(1);
-          
-        if (channelError) {
-          console.error('[SearchPage] Error checking channel matches:', channelError);
-          throw channelError;
-        }
+        if (channelError) throw channelError;
 
         const { data: assetData, error: assetError } = await supabase
           .from('Youtube Sentiment')
           .select('Asset')
           .ilike('Asset', `%${query}%`)
           .limit(1);
-        
-        if (assetError) {
-          console.error('[SearchPage] Error checking asset matches:', assetError);
-          throw assetError;
-        }
-        
-        console.log('[SearchPage] Match results:', {
-          channelMatches: channelData?.length || 0,
-          assetMatches: assetData?.length || 0
-        });
-        
+        if (assetError) throw assetError;
+
         const exactChannelMatch = channelData?.some(
           item => item.youtube_channel?.toLowerCase() === query.toLowerCase()
         );
-        
         const exactAssetMatch = assetData?.some(
           item => item.Asset?.toLowerCase() === query.toLowerCase()
         );
-        
-        console.log('[SearchPage] Exact matches:', {
-          channelExact: exactChannelMatch,
-          assetExact: exactAssetMatch
-        });
-        
-        if (exactChannelMatch || (!exactAssetMatch && channelData && channelData.length > 0)) {
-          console.log('[SearchPage] Determined as channel search');
+
+        if (exactChannelMatch || (!exactAssetMatch && channelData?.length! > 0)) {
           setSearchType('channel');
           loadFilterOptions('Asset');
         } else {
-          console.log('[SearchPage] Determined as asset search');
           setSearchType('asset');
           loadFilterOptions('youtube_channel');
         }
@@ -85,64 +64,47 @@ const SearchResultsPage: React.FC = () => {
         setDetermining(false);
       }
     };
-
     determineSearchType();
   }, [query]);
-  
+
   const loadFilterOptions = async (column: string) => {
     if (!query) return;
-    
     try {
-      console.log(`[SearchPage] Loading filter options for ${column}`);
-      
-      const filterColumn = column;
-      const whereColumn = column === 'Asset' ? 'youtube_channel' : 'Asset';
-      const whereValue = query;
-      
       const { data, error } = await supabase
         .from('Youtube Sentiment')
-        .select(filterColumn)
-        .ilike(whereColumn, `%${whereValue}%`)
-        .order(filterColumn);
-      
-      if (error) {
-        console.error('[SearchPage] Error loading filter options:', error);
-        throw error;
-      }
-      
+        .select(column)
+        .ilike(
+          column === 'Asset' ? 'youtube_channel' : 'Asset',
+          `%${query}%`
+        )
+        .order(column);
+      if (error) throw error;
       if (data) {
         const options = Array.from(
           new Set(
             data
-              .map(item => item[filterColumn as keyof typeof item] as string)
+              .map(item => item[column as keyof typeof item] as string)
               .filter(Boolean)
           )
         );
-        
-        console.log(`[SearchPage] Loaded ${options.length} filter options`);
         setFilterOptions(options);
       }
     } catch (error) {
-      console.error('[SearchPage] Error in loadFilterOptions:', error);
+      console.error('[SearchPage] Error loading filter options:', error);
     }
   };
-  
+
   const handleFilterChange = (value: string) => {
-    console.log('[SearchPage] Filter changed to:', value);
     setCurrentFilter(value);
-    
     if (value === 'all') {
       navigate(`/search/${encodeURIComponent(query || '')}`);
-      return;
-    }
-    
-    if (searchType === 'asset') {
+    } else if (searchType === 'asset') {
       navigate(`/search/${encodeURIComponent(query || '')}?channel=${encodeURIComponent(value)}`);
     } else {
       navigate(`/search/${encodeURIComponent(query || '')}?asset=${encodeURIComponent(value)}`);
     }
   };
-  
+
   const handleSearch = (newQuery: string, type: 'channel' | 'asset') => {
     navigate(`/search/${encodeURIComponent(newQuery)}`);
   };
@@ -150,7 +112,7 @@ const SearchResultsPage: React.FC = () => {
   return (
     <div className="container mx-auto py-8 px-4 animate-fade-in">
       <SearchHeader onSearch={handleSearch} />
-      
+
       <SearchResults
         query={query}
         searchType={searchType}
@@ -164,7 +126,7 @@ const SearchResultsPage: React.FC = () => {
         onFilterChange={handleFilterChange}
         onLoadMore={fetchMore}
         onRefresh={refresh}
-        onChannelClick={handleSearch}
+        onChannelClick={(channel) => handleSearch(channel, 'channel')}    // ← wrapped
       />
 
       {error && (
