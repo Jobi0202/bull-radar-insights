@@ -5,11 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Search } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 
 interface AutocompleteProps {
   placeholder?: string;
-  onSearch: (query: string) => void;
+  onSearch: (query: string, type: 'channel' | 'asset') => void;
   type: 'channel' | 'asset';
 }
 
@@ -22,7 +22,7 @@ export default function Autocomplete({ placeholder, onSearch, type }: Autocomple
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (!query) {
+    if (!query || query.length < 2) {
       setSuggestions([]);
       return;
     }
@@ -31,10 +31,12 @@ export default function Autocomplete({ placeholder, onSearch, type }: Autocomple
       setLoading(true);
       try {
         const column = type === 'channel' ? 'youtube_channel' : 'Asset';
+        
+        // Use startsWith query for better matches
         const { data, error } = await supabase
           .from('Youtube Sentiment')
           .select(column)
-          .ilike(column, `%${query}%`)
+          .ilike(column, `${query}%`)
           .limit(10);
 
         if (error) throw error;
@@ -46,6 +48,7 @@ export default function Autocomplete({ placeholder, onSearch, type }: Autocomple
         setSuggestions(uniqueValues);
       } catch (error) {
         console.error('Error fetching suggestions:', error);
+        setSuggestions([]);
       } finally {
         setLoading(false);
       }
@@ -61,7 +64,7 @@ export default function Autocomplete({ placeholder, onSearch, type }: Autocomple
 
   const handleSubmit = () => {
     if (value.trim()) {
-      onSearch(value.trim());
+      onSearch(value.trim(), type);
       setOpen(false);
     }
   };
@@ -92,13 +95,28 @@ export default function Autocomplete({ placeholder, onSearch, type }: Autocomple
               placeholder={placeholder || `Search by ${type}...`}
               className="border-0 shadow-none focus-visible:ring-0 p-0 h-auto"
             />
-            <Search className="h-4 w-4 shrink-0 opacity-50" />
+            {loading ? (
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4 shrink-0 opacity-50" />
+            )}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
           <Command>
             <CommandList>
-              <CommandEmpty>{loading ? 'Loading...' : 'No results found.'}</CommandEmpty>
+              <CommandEmpty>
+                {loading ? (
+                  <div className="flex items-center justify-center p-2">
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Searching...
+                  </div>
+                ) : query.length < 2 ? (
+                  'Type at least 2 characters to search'
+                ) : (
+                  'No matches found'
+                )}
+              </CommandEmpty>
               <CommandGroup>
                 {suggestions.map((suggestion) => (
                   <CommandItem
@@ -106,8 +124,9 @@ export default function Autocomplete({ placeholder, onSearch, type }: Autocomple
                     onSelect={() => {
                       setValue(suggestion);
                       setOpen(false);
-                      onSearch(suggestion);
+                      onSearch(suggestion, type);
                     }}
+                    className="flex items-center"
                   >
                     {suggestion}
                   </CommandItem>
@@ -122,8 +141,9 @@ export default function Autocomplete({ placeholder, onSearch, type }: Autocomple
         size="sm"
         className="absolute right-0 top-0 h-full rounded-l-none"
         onClick={handleSubmit}
+        disabled={loading}
       >
-        Search
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
       </Button>
     </div>
   );

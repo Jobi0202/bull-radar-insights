@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Youtube } from "lucide-react";
 import SentimentBadge from './SentimentBadge';
+import ChannelAssetDetails from './ChannelAssetDetails';
 import { Mention } from '@/types';
 
 interface MentionsTableProps {
@@ -36,6 +37,7 @@ interface MentionsTableProps {
   onLoadMore?: () => void;
   hasMore?: boolean;
   loading?: boolean;
+  onChannelClick?: (channel: string) => void;
 }
 
 const MentionsTable: React.FC<MentionsTableProps> = ({ 
@@ -47,7 +49,8 @@ const MentionsTable: React.FC<MentionsTableProps> = ({
   expandedView,
   onLoadMore,
   hasMore = false,
-  loading = false
+  loading = false,
+  onChannelClick
 }) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -85,16 +88,20 @@ const MentionsTable: React.FC<MentionsTableProps> = ({
         </div>
       )}
       
-      <div className="table-container overflow-x-auto">
+      <div className="table-container">
         <Table>
           <TableHeader>
             <TableRow>
-              {expandedView !== 'channel' && <TableHead>Channel</TableHead>}
-              {expandedView !== 'asset' && <TableHead>Asset</TableHead>}
-              <TableHead>Date</TableHead>
-              <TableHead>Sentiment</TableHead>
-              <TableHead className="w-full">Video</TableHead>
-              {isExpandable && <TableHead className="w-10"></TableHead>}
+              {expandedView !== 'channel' && (
+                <TableHead className="w-[180px] min-w-[120px]">Channel</TableHead>
+              )}
+              {expandedView !== 'asset' && (
+                <TableHead className="w-[150px] min-w-[100px]">Asset</TableHead>
+              )}
+              <TableHead className="w-[110px] min-w-[90px]">Date</TableHead>
+              <TableHead className="min-w-[120px]">Sentiment</TableHead>
+              <TableHead className="hidden md:table-cell">Video</TableHead>
+              {isExpandable && <TableHead className="w-[80px]"></TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -111,27 +118,52 @@ const MentionsTable: React.FC<MentionsTableProps> = ({
                     className={isExpandable ? "cursor-pointer hover:bg-muted/50" : ""}
                     onClick={isExpandable ? () => toggleExpand(mention.id) : undefined}
                   >
-                    {expandedView !== 'channel' && <TableCell>{mention.youtube_channel}</TableCell>}
-                    {expandedView !== 'asset' && <TableCell>{mention.Asset}</TableCell>}
+                    {expandedView !== 'channel' && (
+                      <TableCell>
+                        {onChannelClick ? (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onChannelClick(mention.youtube_channel);
+                            }}
+                            className="hover:underline text-primary text-left"
+                          >
+                            {mention.youtube_channel}
+                          </button>
+                        ) : (
+                          mention.youtube_channel
+                        )}
+                      </TableCell>
+                    )}
+                    
+                    {expandedView !== 'asset' && (
+                      <TableCell>{mention.Asset}</TableCell>
+                    )}
+                    
                     <TableCell>{formatDate(mention.Publish_date)}</TableCell>
+                    
                     <TableCell>
                       <SentimentBadge sentiment={mention.Sentiment} />
                     </TableCell>
-                    <TableCell className="max-w-xs lg:max-w-md xl:max-w-lg flex items-center gap-2">
-                      {mention.URL && (
-                        <a 
-                          href={mention.URL} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-primary hover:text-primary/80 transition-colors bg-primary/10 p-2 rounded-full flex items-center justify-center hover:bg-primary/20"
-                          title="Watch on YouTube"
-                        >
-                          <Youtube className="h-5 w-5" />
-                        </a>
-                      )}
-                      <span className="truncate">{truncateText(mention.Video_Name, 60)}</span>
+                    
+                    <TableCell className="hidden md:table-cell">
+                      <div className="flex items-center gap-2">
+                        {mention.URL && (
+                          <a 
+                            href={mention.URL} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-primary hover:text-primary/80 transition-colors bg-primary/10 p-2 rounded-full flex items-center justify-center hover:bg-primary/20"
+                            title="Watch on YouTube"
+                          >
+                            <Youtube className="h-5 w-5" />
+                          </a>
+                        )}
+                        <span className="truncate">{truncateText(mention.Video_Name, 60)}</span>
+                      </div>
                     </TableCell>
+                    
                     {isExpandable && (
                       <TableCell className="text-right">
                         <Collapsible open={expandedId === mention.id}>
@@ -151,27 +183,52 @@ const MentionsTable: React.FC<MentionsTableProps> = ({
                       </TableCell>
                     )}
                   </TableRow>
+                  
                   {isExpandable && (
                     <TableRow>
                       <TableCell colSpan={6} className="p-0">
                         <Collapsible open={expandedId === mention.id}>
                           <CollapsibleContent className="p-4 bg-secondary/30">
                             <div className="space-y-4">
+                              {/* Mobile-only video title */}
+                              <div className="md:hidden">
+                                <h4 className="font-semibold">Video</h4>
+                                <p className="text-sm">{mention.Video_Name}</p>
+                                {mention.URL && (
+                                  <a 
+                                    href={mention.URL} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-sm text-primary hover:underline flex items-center gap-1 mt-1"
+                                  >
+                                    <Youtube className="h-4 w-4" /> Watch on YouTube
+                                  </a>
+                                )}
+                              </div>
+                              
+                              {/* Channel or Asset details */}
+                              {expandedView === 'channel' ? (
+                                <div>
+                                  <h4 className="font-semibold">Asset Details</h4>
+                                  <ChannelAssetDetails 
+                                    type="asset"
+                                    name={mention.Asset}
+                                  />
+                                </div>
+                              ) : expandedView === 'asset' ? (
+                                <div>
+                                  <h4 className="font-semibold">Channel Details</h4>
+                                  <ChannelAssetDetails 
+                                    type="channel"
+                                    name={mention.youtube_channel}
+                                  />
+                                </div>
+                              ) : null}
+                              
+                              {/* Analysis */}
                               <div>
                                 <h4 className="font-semibold">Analysis</h4>
                                 <p className="text-sm text-muted-foreground">{mention.Analysis}</p>
-                              </div>
-                              <div>
-                                <h4 className="font-semibold">Video</h4>
-                                <p className="text-sm">{mention.Video_Name}</p>
-                                <a 
-                                  href={mention.URL} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-sm text-primary hover:underline flex items-center gap-1 mt-1"
-                                >
-                                  <Youtube className="h-4 w-4" /> Watch on YouTube
-                                </a>
                               </div>
                             </div>
                           </CollapsibleContent>

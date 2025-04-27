@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { Mention } from '@/types';
+import { Mention, SentimentType } from '@/types';
 import { toast } from '@/components/ui/sonner';
 import { DateRange } from 'react-day-picker';
 
@@ -33,6 +34,32 @@ export function useSupabaseMentions({
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [fetchCount, setFetchCount] = useState(0);
+
+  // Helper function to validate sentiment values
+  const validateSentiment = (sentiment: string | null): SentimentType => {
+    const validSentiments: SentimentType[] = [
+      'Strong Bullish', 
+      'Slightly Bullish', 
+      'Bullish', 
+      'Strong Bearish', 
+      'Slightly Bearish', 
+      'Bearish', 
+      'Neutral (Hold)', 
+      'Neutral'
+    ];
+    
+    if (!sentiment) return 'Neutral';
+    
+    // Check if the sentiment is already valid
+    if (validSentiments.includes(sentiment as SentimentType)) {
+      return sentiment as SentimentType;
+    }
+    
+    // Map to the closest valid sentiment
+    if (sentiment.toLowerCase().includes('bull')) return 'Bullish';
+    if (sentiment.toLowerCase().includes('bear')) return 'Bearish';
+    return 'Neutral';
+  };
 
   const fetchMentions = async (offsetValue: number, isRefresh = false) => {
     try {
@@ -75,7 +102,7 @@ export function useSupabaseMentions({
         youtube_channel: item.youtube_channel || '',
         Asset: item.Asset || '',
         Publish_date: item.Publish_date || new Date().toISOString(),
-        Sentiment: item.Sentiment || 'Neutral',
+        Sentiment: validateSentiment(item.Sentiment),
         Analysis: item.Analysis || '',
         Score: typeof item.Score === 'number' ? item.Score : 0,
         Video_Name: item.Video_Name || '',

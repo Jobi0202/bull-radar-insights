@@ -1,8 +1,7 @@
 
 import React from 'react';
 import { cn } from "@/lib/utils";
-
-type SentimentType = 'Strong Bullish' | 'Slightly Bullish' | 'Bullish' | 'Strong Bearish' | 'Slightly Bearish' | 'Bearish' | 'Neutral (Hold)' | 'Neutral';
+import { SentimentType } from '@/types';
 
 interface SentimentBadgeProps {
   sentiment: SentimentType;

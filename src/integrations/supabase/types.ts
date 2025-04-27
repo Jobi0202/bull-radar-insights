@@ -87,6 +87,36 @@ export type Database = {
         }
         Relationships: []
       }
+      YoutubeAdditionalInformation: {
+        Row: {
+          ChannelURL: string | null
+          created_at: string
+          Description: string | null
+          id: number
+          ImageURL: string | null
+          Name: string | null
+          Type: string | null
+        }
+        Insert: {
+          ChannelURL?: string | null
+          created_at?: string
+          Description?: string | null
+          id?: number
+          ImageURL?: string | null
+          Name?: string | null
+          Type?: string | null
+        }
+        Update: {
+          ChannelURL?: string | null
+          created_at?: string
+          Description?: string | null
+          id?: number
+          ImageURL?: string | null
+          Name?: string | null
+          Type?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

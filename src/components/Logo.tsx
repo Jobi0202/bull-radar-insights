@@ -7,6 +7,7 @@ const Logo = () => {
         alt="Bull Radar Logo" 
         className="h-12 w-auto" 
       />
+      <span className="ml-2 text-xl font-bold text-primary">Bull Radar</span>
     </div>
   );
 };
